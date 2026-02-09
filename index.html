@@ -16,6 +16,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
     <!-- WordCloud2.js สำหรับสร้าง Word Cloud -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/wordcloud2.js/1.2.2/wordcloud2.min.js"></script>
+    <!-- SheetJS (XLSX) สำหรับ Export Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
     <style>
         body { font-family: 'Sarabun', sans-serif; }
@@ -178,23 +180,47 @@
                 <p class="text-xs text-gray-400 mt-2 text-right">*หากรูปทรงไม่เปลี่ยน ลองกดวิเคราะห์ใหม่อีกครั้ง</p>
             </div>
 
-            <!-- Frequency Table -->
-            <div class="bg-white rounded-xl shadow-md p-6">
-                <h2 class="text-xl font-bold text-gray-800 mb-4">📊 ตารางความถี่คำ</h2>
-                <div class="overflow-x-auto max-h-96 border border-gray-100 rounded-lg">
-                    <table class="min-w-full divide-y divide-gray-200">
-                        <thead class="bg-gray-50 sticky top-0 shadow-sm">
-                            <tr>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">อันดับ</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">คำศัพท์ (Word)</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ความถี่ (Frequency)</th>
-                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ความยาว</th>
-                            </tr>
-                        </thead>
-                        <tbody id="freqTableBody" class="bg-white divide-y divide-gray-200">
-                            <!-- Rows will be injected here -->
-                        </tbody>
-                    </table>
+            <!-- Specific Word Analysis & Table -->
+            <div class="grid grid-cols-1 gap-6">
+                
+                <!-- Specific Word Search -->
+                <div class="bg-white rounded-xl shadow-md p-6 border-l-4 border-indigo-500">
+                    <h2 class="text-lg font-bold text-gray-800 mb-3">🔍 ค้นหาจำนวนคำเฉพาะ</h2>
+                    <div class="flex flex-wrap gap-2 items-center">
+                        <input type="text" id="specificWordInput" placeholder="พิมพ์คำที่ต้องการค้นหา (เช่น การเมือง)" class="flex-1 border border-gray-300 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500 shadow-sm">
+                        <button id="specificWordBtn" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md shadow font-medium transition">
+                            ค้นหา
+                        </button>
+                    </div>
+                    <div id="specificWordResult" class="mt-3 text-sm font-medium text-gray-700 hidden">
+                        <!-- Result will be shown here -->
+                    </div>
+                </div>
+
+                <!-- Frequency Table -->
+                <div class="bg-white rounded-xl shadow-md p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-bold text-gray-800">📊 ตารางความถี่คำ</h2>
+                        <button id="exportExcelBtn" class="text-sm bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded shadow transition font-medium flex items-center">
+                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            Save as Excel (.xlsx)
+                        </button>
+                    </div>
+                    <div class="overflow-x-auto max-h-96 border border-gray-100 rounded-lg">
+                        <table class="min-w-full divide-y divide-gray-200" id="freqTable">
+                            <thead class="bg-gray-50 sticky top-0 shadow-sm">
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">อันดับ</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">คำศัพท์ (Word)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ความถี่ (Frequency)</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ความยาว</th>
+                                </tr>
+                            </thead>
+                            <tbody id="freqTableBody" class="bg-white divide-y divide-gray-200">
+                                <!-- Rows will be injected here -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
@@ -226,7 +252,7 @@
             
             // Thai Stopwords (Updated)
             'ที่', 'ซึ่ง', 'อัน', 'แต่', 'หรือ', 'และ', 'ก็', 'ของ', 'ใน', 'บน', 'ล่าง', 'เหนือ', 'ใต้', 'จาก', 'โดย', 'เมื่อ', 'เพื่อ', 'ว่า', 'เป็น', 'อยู่', 'คือ', 'จะ', 'ได้', 'ให้', 'ไป', 'มา', 'นี้', 'นั้น', 'โน้น',
-            // คำเชื่อมและคำสันธานเพิ่มเติมตามที่ขอ
+            // คำเชื่อมและคำสันธานเพิ่มเติม
             'เช่น', 'ยกตัวอย่าง', 'ดังนั้น', 'เพราะฉะนั้น', 'เป็นต้น', 'เป็นต้นว่า', 
             'และอื่นๆ', 'ฯลฯ', 'ก็ตาม', 'ถึงแม้', 'แม้ว่า', 'แต่ว่า', 'ส่วน', 'จนกระทั่ง', 'ตลอดจน', 'อนึ่ง', 'ดังที่', 'ดังกล่าว', 
             'นอกจากนี้', 'อีกทั้ง', 'รวมถึง', 'อาทิ', 'เพราะ', 'เหตุเพราะ', 'ด้วย', 'ทั้งนี้', 'อย่างไรก็ตาม', 'ทว่า', 'ครั้น',
@@ -240,6 +266,7 @@
         const analyzeBtn = document.getElementById('analyzeBtn');
         const resetBtn = document.getElementById('resetBtn');
         const saveBtn = document.getElementById('saveBtn');
+        const exportExcelBtn = document.getElementById('exportExcelBtn');
         const loader = document.getElementById('loader');
         const btnText = document.getElementById('btnText');
         const resultsSection = document.getElementById('resultsSection');
@@ -251,9 +278,15 @@
         const minWordLengthInput = document.getElementById('minWordLength');
         const maxWordLengthInput = document.getElementById('maxWordLength');
         const wordCountBadge = document.getElementById('wordCountBadge');
+        
+        // Specific Word Search Elements
+        const specificWordInput = document.getElementById('specificWordInput');
+        const specificWordBtn = document.getElementById('specificWordBtn');
+        const specificWordResult = document.getElementById('specificWordResult');
 
         // State
         let selectedFile = null;
+        let globalWordCounts = []; // Store current analysis result globally
 
         // --- Event Listeners ---
 
@@ -284,30 +317,76 @@
             location.reload();
         });
 
+        // Save as Image (PNG)
         saveBtn.addEventListener('click', () => {
             try {
-                // บังคับวาดพื้นหลังสีขาวก่อนเซฟ
                 const tempCanvas = document.createElement('canvas');
                 tempCanvas.width = canvas.width;
                 tempCanvas.height = canvas.height;
                 const tCtx = tempCanvas.getContext('2d');
-                
-                // Fill White Background
                 tCtx.fillStyle = '#FFFFFF';
                 tCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
-                
-                // Draw original canvas over
                 tCtx.drawImage(canvas, 0, 0);
 
                 const dataUrl = tempCanvas.toDataURL('image/png');
                 const link = document.createElement('a');
                 link.download = `wordcloud_${new Date().getTime()}.png`;
                 link.href = dataUrl;
-                document.body.appendChild(link); // จำเป็นสำหรับบาง Browser
+                document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
             } catch (err) {
                 alert('เกิดข้อผิดพลาดในการบันทึกรูปภาพ: ' + err.message);
+            }
+        });
+
+        // Export as Excel
+        exportExcelBtn.addEventListener('click', () => {
+            if (globalWordCounts.length === 0) {
+                alert('ไม่พบข้อมูลสำหรับบันทึก');
+                return;
+            }
+
+            // Prepare Data for Excel
+            const aoaData = [
+                ['Word', 'Frequency', 'Length'], // Header
+                ...globalWordCounts.map(item => [item[0], item[1], item[0].length]) // Data Rows
+            ];
+
+            // Create Workbook
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.aoa_to_sheet(aoaData);
+            
+            // Adjust Column Widths (Optional but good)
+            const wscols = [
+                {wch: 30}, // Word
+                {wch: 15}, // Frequency
+                {wch: 10}  // Length
+            ];
+            ws['!cols'] = wscols;
+
+            XLSX.utils.book_append_sheet(wb, ws, "Word Frequency");
+
+            // Save File
+            XLSX.writeFile(wb, `word_frequency_${new Date().getTime()}.xlsx`);
+        });
+
+        // Specific Word Search
+        specificWordBtn.addEventListener('click', () => {
+            const searchWord = specificWordInput.value.trim().toLowerCase();
+            if (!searchWord) return;
+
+            // Search in globalWordCounts
+            // Note: globalWordCounts is processed (lowercase, etc.)
+            // We need to look for exact match in our list or filter
+            
+            const foundItem = globalWordCounts.find(item => item[0] === searchWord);
+            
+            specificWordResult.classList.remove('hidden');
+            if (foundItem) {
+                specificWordResult.innerHTML = `<span class="text-green-600">✅ พบคำว่า "${searchWord}" จำนวน <strong class="text-lg">${foundItem[1]}</strong> คำ</span>`;
+            } else {
+                specificWordResult.innerHTML = `<span class="text-red-500">❌ ไม่พบคำว่า "${searchWord}" ในรายการที่วิเคราะห์</span>`;
             }
         });
 
@@ -321,7 +400,6 @@
 
             setLoading(true);
 
-            // รอเล็กน้อยเพื่อให้ UI อัปเดตก่อนเริ่มงานหนัก
             setTimeout(async () => {
                 try {
                     let textContent = '';
@@ -342,8 +420,8 @@
                         throw new Error('ไม่พบข้อความที่สามารถวิเคราะห์ได้');
                     }
 
-                    const wordCounts = processText(textContent);
-                    displayResults(wordCounts);
+                    globalWordCounts = processText(textContent); // Update global data
+                    displayResults(globalWordCounts);
                     
                 } catch (error) {
                     console.error(error);
@@ -362,6 +440,8 @@
                 btnText.textContent = 'กำลังประมวลผล...';
                 analyzeBtn.disabled = true;
                 resultsSection.classList.add('hidden');
+                specificWordResult.classList.add('hidden'); // Hide previous search
+                specificWordInput.value = '';
             } else {
                 loader.classList.add('hidden');
                 btnText.textContent = '🚀 วิเคราะห์และสร้าง Word Cloud';
@@ -392,33 +472,23 @@
             const removeStop = document.getElementById('removeStopWords').checked;
             const removeSym = document.getElementById('removeSymbols').checked;
             
-            // Get Filters
             const minLen = parseInt(minWordLengthInput.value) || 1;
             const maxLen = parseInt(maxWordLengthInput.value) || 999;
 
             let processed = text.toLowerCase();
 
             if (removeSym) {
-                // ลบทุกอย่างที่ไม่ใช่ตัวอักษรไทย/อังกฤษ และช่องว่าง
                 processed = processed.replace(/[^a-z\u0E00-\u0E7F\s]/g, ' '); 
             } else {
-                // ลบแค่วรรคตอนพื้นฐาน
                 processed = processed.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, ' ');
             }
 
             let words = processed.split(/\s+/);
 
             words = words.filter(word => {
-                // 1. Check Empty
                 if (!word) return false;
-                
-                // 2. Check Stopwords
                 if (removeStop && defaultStopWords.has(word)) return false;
-                
-                // 3. Check Symbols (Digits Only)
                 if (removeSym && /^\d+$/.test(word)) return false;
-
-                // 4. Check Length (ฟีเจอร์ใหม่ 2-10 คำ ตามที่ขอ)
                 if (word.length < minLen) return false;
                 if (maxLen > 0 && word.length > maxLen) return false;
 
@@ -436,35 +506,30 @@
         function displayResults(wordList) {
             resultsSection.classList.remove('hidden');
             
-            // เตรียม Canvas
             const containerWidth = canvas.parentElement.offsetWidth;
             canvas.width = containerWidth;
             canvas.height = 500;
             const ctx = canvas.getContext('2d');
             
-            // เคลียร์ Canvas ให้สะอาดจริงจังก่อนวาดใหม่
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.fillStyle = '#ffffff';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             const shape = shapeSelect.value;
-            const limit = parseInt(maxWordsRange.value); // จำนวนคำที่จำกัด (Slider)
+            const limit = parseInt(maxWordsRange.value);
 
-            // ตัดเฉพาะจำนวนที่ต้องการ
             const cloudList = wordList.slice(0, limit);
 
             if (cloudList.length === 0) {
-                alert("ไม่พบคำศัพท์ตามเงื่อนไขที่กำหนด (ลองปรับความยาวคำ หรือปิดการกรอง)");
+                alert("ไม่พบคำศัพท์ตามเงื่อนไขที่กำหนด");
                 return;
             }
 
             wordCountBadge.textContent = `แสดง ${cloudList.length} คำ`;
 
             const maxFreq = cloudList[0][1];
-            // Scaling logic
             const factor = (containerWidth > 600 ? 120 : 60) / maxFreq; 
 
-            // วาด Word Cloud
             WordCloud(canvas, {
                 list: cloudList,
                 gridSize: 8,
@@ -475,11 +540,11 @@
                 color: 'random-dark',
                 rotateRatio: 0.5,
                 rotationSteps: 2,
-                backgroundColor: '#ffffff', // สำคัญ: กำหนดสีพื้นหลังให้ Library
+                backgroundColor: '#ffffff',
                 shape: shape,
                 drawOutOfBound: false,
                 shrinkToFit: true,
-                clearCanvas: true // บอก Library ให้เคลียร์ก่อนวาด
+                clearCanvas: true
             });
 
             // สร้างตาราง (แสดงผลทั้งหมดตามฟิลเตอร์ หรือ Top 100)
@@ -499,7 +564,6 @@
                 freqTableBody.innerHTML += row;
             });
             
-            // Scroll to results
             setTimeout(() => {
                 resultsSection.scrollIntoView({ behavior: 'smooth' });
             }, 100);
