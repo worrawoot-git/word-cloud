@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Cloud & Text Analyzer</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
+    
+    <!-- Libraries -->
+    <!-- PDF.js สำหรับอ่านไฟล์ PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- Mammoth.js สำหรับอ่านไฟล์ Word (.docx) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <!-- WordCloud2.js สำหรับสร้าง Word Cloud -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/wordcloud2.js/1.2.2/wordcloud2.min.js"></script>
+
+    <style>
+        body { font-family: 'Sarabun', sans-serif; }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        /* สไตล์สำหรับ Canvas */
+        #word-cloud-canvas {
+            width: 100%;
+            height: 400px;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            background-color: white;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 min-h-screen">
+
+    <!-- Header -->
+    <header class="bg-indigo-600 text-white p-6 shadow-lg">
+        <div class="container mx-auto">
+            <h1 class="text-3xl font-bold">📄 Word Cloud Analyzer</h1>
+            <p class="mt-2 text-indigo-100">วิเคราะห์ความถี่คำจากไฟล์ PDF, Word หรือข้อความที่วางลงไป</p>
+        </div>
+    </header>
+
+    <main class="container mx-auto p-6">
+        
+        <!-- Control Panel -->
+        <div class="bg-white rounded-xl shadow-md p-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                
+                <!-- Input Section (File or Text) -->
+                <div class="flex flex-col space-y-4">
+                    <h2 class="text-lg font-semibold text-gray-700">1. เลือกแหล่งข้อมูล</h2>
+                    
+                    <!-- File Upload -->
+                    <div class="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center hover:bg-gray-50 transition relative group">
+                        <input type="file" id="fileInput" accept=".pdf,.docx" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                        <div class="flex flex-col items-center justify-center h-full">
+                            <svg class="w-10 h-10 text-gray-400 mb-2 group-hover:text-indigo-500 transition" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                            <p class="text-sm text-gray-600 font-medium">คลิกเลือกไฟล์ PDF / Word</p>
+                            <p id="fileNameDisplay" class="text-indigo-600 font-bold mt-2 text-sm hidden"></p>
+                        </div>
+                    </div>
+
+                    <!-- Divider -->
+                    <div class="relative flex items-center justify-center">
+                        <hr class="w-full border-gray-200">
+                        <span class="absolute bg-white px-2 text-xs text-gray-400 uppercase tracking-widest">หรือ (OR)</span>
+                    </div>
+
+                    <!-- Text Area Input -->
+                    <div class="relative">
+                         <label for="textInput" class="block text-sm font-medium text-gray-600 mb-1">วางข้อความที่นี่ (ไม่จำกัดจำนวนคำ)</label>
+                        <textarea id="textInput" rows="5" 
+                            class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-indigo-500 focus:border-indigo-500 text-sm" 
+                            placeholder="Paste your text here..."></textarea>
+                    </div>
+                </div>
+
+                <!-- Settings & Actions -->
+                <div class="flex flex-col space-y-4">
+                    <h2 class="text-lg font-semibold text-gray-700">2. ตั้งค่าการวิเคราะห์</h2>
+                    
+                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-100 space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">รูปทรง Word Cloud</label>
+                            <select id="shapeSelect" class="w-full border-gray-300 rounded-md shadow-sm border p-2 focus:ring-indigo-500 focus:border-indigo-500">
+                                <option value="circle">วงกลม (Circle)</option>
+                                <option value="square">สี่เหลี่ยม (Square)</option>
+                                <option value="star">ดาว (Star)</option>
+                                <option value="diamond">ข้าวหลามตัด (Diamond)</option>
+                                <option value="triangle">สามเหลี่ยม (Triangle)</option>
+                            </select>
+                        </div>
+
+                        <div class="flex space-x-2 items-start">
+                            <input type="checkbox" id="removeStopWords" checked class="mt-1 h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                            <label for="removeStopWords" class="text-sm text-gray-700 leading-snug">
+                                ตัดคำเชื่อม/คำนำหน้านาม<br>
+                                <span class="text-xs text-gray-500">(เช่น a, the, and, ที่, ซึ่ง, อัน)</span>
+                            </label>
+                        </div>
+                        
+                        <div class="flex space-x-2 items-center">
+                            <input type="checkbox" id="removeSymbols" checked class="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500">
+                            <label for="removeSymbols" class="text-sm text-gray-700">
+                                ตัดสัญลักษณ์พิเศษ (!@#$%) และตัวเลข
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="flex-grow"></div> <!-- Spacer -->
+
+                    <div class="flex space-x-3 pt-2">
+                        <button id="analyzeBtn" class="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition flex justify-center items-center transform hover:-translate-y-0.5">
+                            <span id="btnText">🚀 วิเคราะห์ข้อมูล</span>
+                            <div id="loader" class="loader ml-2 hidden" style="width: 20px; height: 20px; border-width: 3px;"></div>
+                        </button>
+                        <button id="resetBtn" class="bg-white border border-gray-300 hover:bg-gray-100 text-gray-700 font-bold py-3 px-4 rounded-lg shadow-sm transition">
+                            ❌ Reset
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section (Hidden initially) -->
+        <div id="resultsSection" class="hidden space-y-8 animate-fade-in-up">
+            
+            <!-- Word Cloud Display -->
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-xl font-bold text-gray-800">🌥️ Word Cloud</h2>
+                    <button id="saveBtn" class="text-sm bg-green-500 hover:bg-green-600 text-white py-2 px-4 rounded shadow transition font-medium flex items-center">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                        บันทึกรูปภาพ (PNG)
+                    </button>
+                </div>
+                <div class="relative w-full border border-gray-100 rounded-lg overflow-hidden" style="height: 500px;">
+                    <canvas id="word-cloud-canvas" width="1000" height="500"></canvas>
+                </div>
+            </div>
+
+            <!-- Frequency Table -->
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <h2 class="text-xl font-bold text-gray-800 mb-4">📊 ตารางความถี่คำ (Top 100)</h2>
+                <div class="overflow-x-auto max-h-96">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50 sticky top-0">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">อันดับ</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">คำศัพท์ (Word)</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ความถี่ (Frequency)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="freqTableBody" class="bg-white divide-y divide-gray-200">
+                            <!-- Rows will be injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <footer class="text-center text-gray-400 py-6 text-sm">
+        <p>Word Cloud Analyzer - Client-Side Processing</p>
+    </footer>
+
+    <script>
+        // --- Configuration & Setup ---
+        // ตั้งค่า Worker สำหรับ PDF.js
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // รายการ Stopwords (อังกฤษ + ไทยบางส่วน)
+        const defaultStopWords = new Set([
+            // English
+            'a', 'about', 'above', 'after', 'again', 'against', 'all', 'am', 'an', 'and', 'any', 'are', 'aren\'t', 'as', 'at',
+            'be', 'because', 'been', 'before', 'being', 'below', 'between', 'both', 'but', 'by', 
+            'can', 'cannot', 'could', 'couldn\'t', 'did', 'didn\'t', 'do', 'does', 'doesn\'t', 'doing', 'don\'t', 'down', 'during',
+            'each', 'few', 'for', 'from', 'further', 'had', 'hadn\'t', 'has', 'hasn\'t', 'have', 'haven\'t', 'having', 'he', 'he\'d', 'he\'ll', 'he\'s', 'her', 'here', 'here\'s', 'hers', 'herself', 'him', 'himself', 'his', 'how', 'how\'s',
+            'i', 'i\'d', 'i\'ll', 'i\'m', 'i\'ve', 'if', 'in', 'into', 'is', 'isn\'t', 'it', 'it\'s', 'its', 'itself',
+            'let\'s', 'me', 'more', 'most', 'mustn\'t', 'my', 'myself',
+            'no', 'nor', 'not', 'of', 'off', 'on', 'once', 'only', 'or', 'other', 'ought', 'our', 'ours', 'ourselves', 'out', 'over', 'own',
+            'same', 'shan\'t', 'she', 'she\'d', 'she\'ll', 'she\'s', 'should', 'shouldn\'t', 'so', 'some', 'such',
+            'than', 'that', 'that\'s', 'the', 'their', 'theirs', 'them', 'themselves', 'then', 'there', 'there\'s', 'these', 'they', 'they\'d', 'they\'ll', 'they\'re', 'they\'ve', 'this', 'those', 'through', 'to', 'too', 'under', 'until', 'up',
+            'very', 'was', 'wasn\'t', 'we', 'we\'d', 'we\'ll', 'we\'re', 'we\'ve', 'were', 'weren\'t', 'what', 'what\'s', 'when', 'when\'s', 'where', 'where\'s', 'which', 'while', 'who', 'who\'s', 'whom', 'why', 'why\'s', 'with', 'won\'t', 'would', 'wouldn\'t',
+            'you', 'you\'d', 'you\'ll', 'you\'re', 'you\'ve', 'your', 'yours', 'yourself', 'yourselves',
+            // Thai Common Stopwords (Basic)
+            'ที่', 'ซึ่ง', 'อัน', 'แต่', 'หรือ', 'และ', 'ก็', 'ของ', 'ใน', 'บน', 'ล่าง', 'เหนือ', 'ใต้', 'จาก', 'โดย', 'เมื่อ', 'เพื่อ', 'ว่า', 'เป็น', 'อยู่', 'คือ', 'จะ', 'ได้', 'ให้', 'ไป', 'มา', 'นี้', 'นั้น', 'โน้น'
+        ]);
+
+        // DOM Elements
+        const fileInput = document.getElementById('fileInput');
+        const textInput = document.getElementById('textInput');
+        const fileNameDisplay = document.getElementById('fileNameDisplay');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const saveBtn = document.getElementById('saveBtn');
+        const loader = document.getElementById('loader');
+        const btnText = document.getElementById('btnText');
+        const resultsSection = document.getElementById('resultsSection');
+        const freqTableBody = document.getElementById('freqTableBody');
+        const canvas = document.getElementById('word-cloud-canvas');
+        const shapeSelect = document.getElementById('shapeSelect');
+
+        // State
+        let selectedFile = null;
+
+        // --- Event Listeners ---
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                selectedFile = e.target.files[0];
+                fileNameDisplay.textContent = `📂 ไฟล์ที่เลือก: ${selectedFile.name}`;
+                fileNameDisplay.classList.remove('hidden');
+                // Clear text input to avoid confusion
+                textInput.value = '';
+                textInput.setAttribute('disabled', 'true');
+                textInput.classList.add('bg-gray-100');
+            }
+        });
+
+        // If user starts typing, clear file selection
+        textInput.addEventListener('input', () => {
+            if (textInput.value.length > 0) {
+                selectedFile = null;
+                fileInput.value = '';
+                fileNameDisplay.classList.add('hidden');
+            }
+        });
+        
+        // Re-enable text input if file is cleared (via logic, though reset btn handles this mainly)
+        resetBtn.addEventListener('click', () => {
+            location.reload();
+        });
+
+        saveBtn.addEventListener('click', () => {
+            try {
+                const dataUrl = canvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.download = `wordcloud_${new Date().getTime()}.png`;
+                link.href = dataUrl;
+                link.click();
+            } catch (err) {
+                alert('เกิดข้อผิดพลาดในการบันทึกรูปภาพ: ' + err.message);
+            }
+        });
+
+        analyzeBtn.addEventListener('click', async () => {
+            const rawText = textInput.value;
+
+            // Validation: Must have either file OR text
+            if (!selectedFile && !rawText.trim()) {
+                alert('กรุณาเลือกไฟล์เอกสาร หรือวางข้อความเพื่อทำการวิเคราะห์ครับ');
+                return;
+            }
+
+            setLoading(true);
+
+            try {
+                let textContent = '';
+                
+                if (selectedFile) {
+                    // Case 1: File
+                    if (selectedFile.name.toLowerCase().endsWith('.pdf')) {
+                        textContent = await parsePDF(selectedFile);
+                    } else if (selectedFile.name.toLowerCase().endsWith('.docx')) {
+                        textContent = await parseDocx(selectedFile);
+                    } else {
+                        throw new Error('รองรับเฉพาะไฟล์ .pdf และ .docx เท่านั้น');
+                    }
+                } else {
+                    // Case 2: Text Area
+                    textContent = rawText;
+                }
+
+                if (!textContent.trim()) {
+                    throw new Error('ไม่พบข้อความที่สามารถวิเคราะห์ได้');
+                }
+
+                // Process
+                const wordCounts = processText(textContent);
+                
+                // Display
+                displayResults(wordCounts);
+                
+            } catch (error) {
+                console.error(error);
+                alert('เกิดข้อผิดพลาด: ' + error.message);
+            } finally {
+                setLoading(false);
+            }
+        });
+
+        // --- Core Functions ---
+
+        function setLoading(isLoading) {
+            if (isLoading) {
+                loader.classList.remove('hidden');
+                btnText.textContent = 'กำลังประมวลผล...';
+                analyzeBtn.disabled = true;
+                resultsSection.classList.add('hidden');
+            } else {
+                loader.classList.add('hidden');
+                btnText.textContent = '🚀 วิเคราะห์ข้อมูล';
+                analyzeBtn.disabled = false;
+            }
+        }
+
+        async function parsePDF(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            let fullText = '';
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const textContent = await page.getTextContent();
+                const pageText = textContent.items.map(item => item.str).join(' ');
+                fullText += pageText + ' ';
+            }
+            return fullText;
+        }
+
+        async function parseDocx(file) {
+            const arrayBuffer = await file.arrayBuffer();
+            const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+            return result.value;
+        }
+
+        function processText(text) {
+            const removeStop = document.getElementById('removeStopWords').checked;
+            const removeSym = document.getElementById('removeSymbols').checked;
+
+            let processed = text.toLowerCase();
+
+            if (removeSym) {
+                // Keep Thai, English, Digits (removed later if needed), spaces
+                // Removing digits by excluding 0-9 from regex below
+                processed = processed.replace(/[^a-z\u0E00-\u0E7F\s]/g, ' '); 
+            } else {
+                processed = processed.replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, ' ');
+            }
+
+            let words = processed.split(/\s+/);
+
+            words = words.filter(word => {
+                if (!word || word.length < 2) return false;
+                if (removeStop && defaultStopWords.has(word)) return false;
+                // กรองตัวเลขล้วนออก ถ้าเลือกตัดสัญลักษณ์ (มักจะรวมตัวเลขด้วยในบริบท word cloud)
+                if (removeSym && /^\d+$/.test(word)) return false;
+                return true;
+            });
+
+            const frequencyMap = {};
+            words.forEach(word => {
+                frequencyMap[word] = (frequencyMap[word] || 0) + 1;
+            });
+
+            return Object.entries(frequencyMap).sort((a, b) => b[1] - a[1]);
+        }
+
+        function displayResults(wordList) {
+            resultsSection.classList.remove('hidden');
+            
+            // Canvas Sizing
+            const containerWidth = canvas.parentElement.offsetWidth;
+            canvas.width = containerWidth;
+            canvas.height = 500;
+
+            const shape = document.getElementById('shapeSelect').value;
+            const cloudList = wordList.slice(0, 200); // Increased to 200 words
+
+            if (cloudList.length === 0) {
+                alert("ไม่พบคำศัพท์หลังจากกรองแล้ว");
+                return;
+            }
+
+            const maxFreq = cloudList[0][1];
+            // Dynamic scaling factor
+            const factor = 100 / maxFreq; 
+
+            WordCloud(canvas, {
+                list: cloudList,
+                gridSize: 10,
+                weightFactor: function (size) {
+                    return Math.max(size * factor, 10); // Min size 10px
+                },
+                fontFamily: 'Sarabun, sans-serif',
+                color: 'random-dark',
+                rotateRatio: 0.5,
+                rotationSteps: 2,
+                backgroundColor: '#ffffff',
+                shape: shape,
+                drawOutOfBound: false,
+                shrinkToFit: true
+            });
+
+            // Table
+            const topN = wordList.slice(0, 100);
+            freqTableBody.innerHTML = '';
+            
+            if(topN.length === 0) {
+                freqTableBody.innerHTML = '<tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">ไม่พบข้อมูลคำศัพท์</td></tr>';
+            } else {
+                topN.forEach((item, index) => {
+                    const row = `
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${index + 1}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${item[0]}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-indigo-600 font-bold">${item[1]}</td>
+                        </tr>
+                    `;
+                    freqTableBody.innerHTML += row;
+                });
+            }
+            
+            setTimeout(() => {
+                resultsSection.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+        }
+
+    </script>
+</body>
+</html>
