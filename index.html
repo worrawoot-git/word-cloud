@@ -211,6 +211,7 @@
 
         // Stopwords
         const defaultStopWords = new Set([
+            // English Common Stopwords
             'a', 'about', 'above', 'after', 'again', 'against', 'all', 'am', 'an', 'and', 'any', 'are', 'aren\'t', 'as', 'at',
             'be', 'because', 'been', 'before', 'being', 'below', 'between', 'both', 'but', 'by', 
             'can', 'cannot', 'could', 'couldn\'t', 'did', 'didn\'t', 'do', 'does', 'doesn\'t', 'doing', 'don\'t', 'down', 'during',
@@ -222,7 +223,14 @@
             'than', 'that', 'that\'s', 'the', 'their', 'theirs', 'them', 'themselves', 'then', 'there', 'there\'s', 'these', 'they', 'they\'d', 'they\'ll', 'they\'re', 'they\'ve', 'this', 'those', 'through', 'to', 'too', 'under', 'until', 'up',
             'very', 'was', 'wasn\'t', 'we', 'we\'d', 'we\'ll', 'we\'re', 'we\'ve', 'were', 'weren\'t', 'what', 'what\'s', 'when', 'when\'s', 'where', 'where\'s', 'which', 'while', 'who', 'who\'s', 'whom', 'why', 'why\'s', 'with', 'won\'t', 'would', 'wouldn\'t',
             'you', 'you\'d', 'you\'ll', 'you\'re', 'you\'ve', 'your', 'yours', 'yourself', 'yourselves',
-            'ที่', 'ซึ่ง', 'อัน', 'แต่', 'หรือ', 'และ', 'ก็', 'ของ', 'ใน', 'บน', 'ล่าง', 'เหนือ', 'ใต้', 'จาก', 'โดย', 'เมื่อ', 'เพื่อ', 'ว่า', 'เป็น', 'อยู่', 'คือ', 'จะ', 'ได้', 'ให้', 'ไป', 'มา', 'นี้', 'นั้น', 'โน้น'
+            
+            // Thai Stopwords (Updated)
+            'ที่', 'ซึ่ง', 'อัน', 'แต่', 'หรือ', 'และ', 'ก็', 'ของ', 'ใน', 'บน', 'ล่าง', 'เหนือ', 'ใต้', 'จาก', 'โดย', 'เมื่อ', 'เพื่อ', 'ว่า', 'เป็น', 'อยู่', 'คือ', 'จะ', 'ได้', 'ให้', 'ไป', 'มา', 'นี้', 'นั้น', 'โน้น',
+            // คำเชื่อมและคำสันธานเพิ่มเติมตามที่ขอ
+            'เช่น', 'ยกตัวอย่าง', 'ดังนั้น', 'เพราะฉะนั้น', 'เป็นต้น', 'เป็นต้นว่า', 
+            'และอื่นๆ', 'ฯลฯ', 'ก็ตาม', 'ถึงแม้', 'แม้ว่า', 'แต่ว่า', 'ส่วน', 'จนกระทั่ง', 'ตลอดจน', 'อนึ่ง', 'ดังที่', 'ดังกล่าว', 
+            'นอกจากนี้', 'อีกทั้ง', 'รวมถึง', 'อาทิ', 'เพราะ', 'เหตุเพราะ', 'ด้วย', 'ทั้งนี้', 'อย่างไรก็ตาม', 'ทว่า', 'ครั้น',
+            'หาก', 'ถ้า', 'แม้น', 'เมื่อไร', 'ตราบใด', 'จนกว่า', 'ดั่ง', 'ราวกับ', 'ดุจ', 'เสมือน', 'ประหนึ่ง'
         ]);
 
         // DOM Elements
